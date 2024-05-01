@@ -59,6 +59,7 @@ async def role(ctx, *roles):
     added_roles = []
     not_found_roles = []
     invalid_roles = []
+    owned_roles = []
 
     for role_name in roles:
         if not is_valid_role(role_name):
@@ -70,6 +71,8 @@ async def role(ctx, *roles):
                 if role not in ctx.author.roles:
                     await ctx.author.add_roles(role)
                     added_roles.append(role.name)  # Use actual role name in confirmation
+                else:
+                    owned_roles.append(role.name)
             else:
                 not_found_roles.append(role_name)
 
@@ -96,6 +99,14 @@ async def role(ctx, *roles):
             color=discord.Color.red()
         )
         await ctx.send(embed=embed)
+    
+    if owned_roles:
+        embed = discord.Embed(
+            title="Error",
+            description=f"Role(s) {', '.join(owned_roles)} already claimed.",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
 
 @bot.command()
 async def unrole(ctx, *roles):
@@ -110,10 +121,24 @@ async def unrole(ctx, *roles):
         )
         await ctx.send(embed=embed)
         return
+    
+    if roles[0].lower() == "all":
+        # Remove all roles that match the specified format (3 letters followed by 3 numbers)
+        matching_roles = [role for role in ctx.author.roles if is_valid_role(role.name)]
+        for role in matching_roles:
+            await ctx.author.remove_roles(role)
+        embed = discord.Embed(
+            title="Success",
+            description="All applicable roles successfully removed.",
+            color=discord.Color.green()
+        )
+        await ctx.send(embed=embed)
+        return
 
     removed_roles = []
     not_found_roles = []
     invalid_roles = []
+    unowned_roles = []
 
     for role_name in roles:
         if not is_valid_role(role_name):
@@ -125,6 +150,8 @@ async def unrole(ctx, *roles):
                 if role in ctx.author.roles:
                     await ctx.author.remove_roles(role)
                     removed_roles.append(role.name)  # Use actual role name in confirmation
+                else:
+                    unowned_roles.append(role.name)
             else:
                 not_found_roles.append(role_name)
 
@@ -148,6 +175,14 @@ async def unrole(ctx, *roles):
         embed = discord.Embed(
             title="Error",
             description="Invalid role format. Roles must be in the form ABC123.",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
+    
+    if unowned_roles:
+        embed = discord.Embed(
+            title="Error",
+            description=f"You don't have role(s) {', '.join(unowned_roles)}!",
             color=discord.Color.red()
         )
         await ctx.send(embed=embed)
