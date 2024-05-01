@@ -46,7 +46,7 @@ async def cmds(ctx):
 async def role(ctx, *roles):
     if ctx.channel.name.lower() != COMMAND_CHANNEL:
         return
-    # Check for supplied arguments
+
     if not roles:
         embed = discord.Embed(
             title="Error",
@@ -57,6 +57,7 @@ async def role(ctx, *roles):
         return
 
     added_roles = []
+    not_found_roles = []
     invalid_roles = []
 
     for role_name in roles:
@@ -70,7 +71,7 @@ async def role(ctx, *roles):
                     await ctx.author.add_roles(role)
                     added_roles.append(role.name)  # Use actual role name in confirmation
             else:
-                invalid_roles.append(role_name)
+                not_found_roles.append(role_name)
 
     if added_roles:
         embed = discord.Embed(
@@ -79,6 +80,15 @@ async def role(ctx, *roles):
             color=discord.Color.green()
         )
         await ctx.send(embed=embed)
+
+    if not_found_roles:
+        embed = discord.Embed(
+            title="Error",
+            description=f"Role(s) {', '.join(not_found_roles)} not found. If you would like this role added, visit https://discord.com/channels/1165430643203776674/1184910477273346218",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
+
     if invalid_roles:
         embed = discord.Embed(
             title="Error",
@@ -89,7 +99,6 @@ async def role(ctx, *roles):
 
 @bot.command()
 async def unrole(ctx, *roles):
-    # Check if the command is invoked in the #roles channel
     if ctx.channel.name.lower() != COMMAND_CHANNEL:
         return
 
@@ -102,20 +111,8 @@ async def unrole(ctx, *roles):
         await ctx.send(embed=embed)
         return
 
-    if roles[0].lower() == "all":
-        # Remove all roles that match the specified format (3 letters followed by 3 numbers)
-        matching_roles = [role for role in ctx.author.roles if is_valid_role(role.name)]
-        for role in matching_roles:
-            await ctx.author.remove_roles(role)
-        embed = discord.Embed(
-            title="Success",
-            description="All matching roles successfully removed.",
-            color=discord.Color.green()
-        )
-        await ctx.send(embed=embed)
-        return
-
     removed_roles = []
+    not_found_roles = []
     invalid_roles = []
 
     for role_name in roles:
@@ -129,7 +126,7 @@ async def unrole(ctx, *roles):
                     await ctx.author.remove_roles(role)
                     removed_roles.append(role.name)  # Use actual role name in confirmation
             else:
-                invalid_roles.append(role_name)
+                not_found_roles.append(role_name)
 
     if removed_roles:
         embed = discord.Embed(
@@ -138,6 +135,15 @@ async def unrole(ctx, *roles):
             color=discord.Color.green()
         )
         await ctx.send(embed=embed)
+
+    if not_found_roles:
+        embed = discord.Embed(
+            title="Error",
+            description=f"Role(s) {', '.join(not_found_roles)} not found. If you would like this role added, visit https://discord.com/channels/1165430643203776674/1184910477273346218",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
+
     if invalid_roles:
         embed = discord.Embed(
             title="Error",
