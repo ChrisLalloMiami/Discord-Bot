@@ -1,5 +1,6 @@
 import os.path
 import sys
+import re
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 import discord
@@ -217,6 +218,72 @@ class RoleManagementCog(commands.Cog, name="Role Management"):
                 color=discord.Color.red()
             )
             await ctx.send(embed=embed)
+    
+    @commands.command(usage="[Category]")
+    async def roles(self, ctx, role_type: str = None):
+        """See the list of available roles"""
+        if ctx.channel.name.lower() != COMMAND_CHANNEL:
+            return
+        
+        roles = []
+        buffer = discord.utils.get(ctx.guild.roles, name=BUFFER_NAME)
+        for role in ctx.guild.roles:
+            if buffer is None:
+                print("ERROR: BUFFER role not found")
+                return
+            if role.position < buffer.position and role.name != "@everyone":
+                roles.append(role)
+        
+        pattern = re.compile(r'^([A-Za-z]+)\d+$')
+        categories = {
+            "Misc": []
+        }
+
+        # Categorize roles
+        for role in roles:
+            match = pattern.match(role.name)
+            if match:
+                prefix = match.group(1)
+                if prefix not in categories:
+                    categories[prefix] = []
+                categories[prefix].append(role)
+            else:
+                categories["Misc"].append(role)
+
+
+        if role_type:
+            role_type = role_type.upper()
+            if role_type not in categories:
+                if role_type == "MISC":
+                    role_type = "Misc"
+                else:
+                    await ctx.send(f"No roles found for type: {role_type}")
+                    return
+            categories = {role_type: categories.get(role_type, [])}
+        else:
+            category_list = ", ".join(categories.keys())
+            embed = discord.Embed(
+                title="Error",
+                description=f"Please choose a valid course category: {category_list}",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
+            return
+
+        # Create a single embed
+        embed = discord.Embed(
+            title=f"Claimable {role_type} Roles",
+            color=discord.Color.blue()
+        )
+
+        # Add fields for each category
+        for category, roles_list in categories.items():
+            if roles_list:
+                roles_description = "\n".join(f"• {role}" for role in roles_list)
+                embed.add_field(name=category, value=roles_description, inline=False)
+        
+        # Send the embed
+        await ctx.send(embed=embed)
 
 def is_valid_role(ctx, role_name):
     '''
