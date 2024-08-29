@@ -29,10 +29,10 @@ class MemberManagementCog(commands.Cog, name="Member Management"):
             )
             await ctx.send(embed=embed)
             return
-        elif discord.utils.get(user.roles, name=ADMIN_NAME) is not None:
+        elif ctx.author.top_role.position <= user.top_role.position:
             embed = discord.Embed(
                 title="Error",
-                description="Cannot kick another admin",
+                description="Cannot mute this user due to elevated permissions",
                 color=discord.Color.red()
             )
             await ctx.send(embed=embed)
@@ -86,10 +86,10 @@ class MemberManagementCog(commands.Cog, name="Member Management"):
             )
             await ctx.send(embed=embed)
             return
-        elif discord.utils.get(user.roles, name=ADMIN_NAME) is not None:
+        elif ctx.author.top_role.position <= user.top_role.position:
             embed = discord.Embed(
                 title="Error",
-                description="Cannot ban another admin",
+                description="Cannot mute this user due to elevated permissions",
                 color=discord.Color.red()
             )
             await ctx.send(embed=embed)
@@ -123,6 +123,132 @@ class MemberManagementCog(commands.Cog, name="Member Management"):
             embed = discord.Embed(
                 title="Error",
                 description="Failed to ban the user due to a network error",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
+            return
+
+    @commands.command(usage="@user [reason]")
+    @commands.has_permissions(manage_roles=True)
+    async def mute(self, ctx, user: discord.Member, reason=None):
+        '''
+        Mute a user
+        '''
+        # Check for muted role
+        muted = discord.utils.get(ctx.guild.roles, name=MUTED_NAME)
+        if muted is None:
+            print("Failed to find Muted role")
+            return
+        
+        # Don't let user mute themselves
+        if user == ctx.author:
+            embed = discord.Embed(
+                title="Error",
+                description="You cannot mute yourself",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
+            return
+        elif ctx.author.top_role.position <= user.top_role.position:
+            embed = discord.Embed(
+                title="Error",
+                description="Cannot mute this user due to elevated permissions",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
+            return
+        
+        # Successful mute
+        try:
+            await user.add_roles(muted, reason=reason)
+            description = None
+            if reason is not None:
+                description = f"{user.mention} has been muted for: {reason}"
+            else:
+                description = f"{user.mention} has been muted"
+            embed = discord.Embed(
+                title="Success",
+                description=description,
+                color=discord.Color.green()
+            )
+            await ctx.send(embed=embed)
+            return
+        # Cannot mute someone with higher privileges
+        except discord.Forbidden:
+            embed = discord.Embed(
+                title="Error",
+                description="Cannot mute this user due to elevated permissions",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
+            return
+        except discord.HTTPException:
+            embed = discord.Embed(
+                title="Error",
+                description="Failed to mute the user due to a network error",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
+            return
+        
+    @commands.command(usage="@user [reason]")
+    @commands.has_permissions(manage_roles=True)
+    async def unmute(self, ctx, user: discord.Member, reason=None):
+        '''
+        Unmute a user
+        '''
+        # Check for muted role
+        muted = discord.utils.get(ctx.guild.roles, name=MUTED_NAME)
+        if muted is None:
+            print("Failed to find Muted role")
+            return
+        
+        # Don't let user unmute themselves
+        if user == ctx.author:
+            embed = discord.Embed(
+                title="Error",
+                description="You cannot unmute yourself",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
+            return
+        elif ctx.author.top_role.position <= user.top_role.position:
+            embed = discord.Embed(
+                title="Error",
+                description="Cannot unmute this user due to elevated permissions",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
+            return
+        
+        # Successful unmute
+        try:
+            await user.remove_roles(muted, reason=reason)
+            description = None
+            if reason is not None:
+                description = f"{user.mention} has been unmuted for: {reason}"
+            else:
+                description = f"{user.mention} has been unmuted"
+            embed = discord.Embed(
+                title="Success",
+                description=description,
+                color=discord.Color.green()
+            )
+            await ctx.send(embed=embed)
+            return
+        # Cannot unmute someone with higher privileges
+        except discord.Forbidden:
+            embed = discord.Embed(
+                title="Error",
+                description="Cannot unmute this user due to elevated permissions",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
+            return
+        except discord.HTTPException:
+            embed = discord.Embed(
+                title="Error",
+                description="Failed to unmute the user due to a network error",
                 color=discord.Color.red()
             )
             await ctx.send(embed=embed)
