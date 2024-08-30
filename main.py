@@ -15,6 +15,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 # Import command and helper modules
 from cogs.role_management import RoleManagementCog
 from cogs.member_management import MemberManagementCog
+from cogs.game_management import GameManagementCog
+from cogs.blackjack import BlackjackManagementCog
 from cogs.help import CustomHelpCommand
 from helpers.funcs import *
 
@@ -29,6 +31,8 @@ async def on_ready():
     activity = discord.Game(name="Chat .help for help!")
     await bot.add_cog(RoleManagementCog(bot))
     await bot.add_cog(MemberManagementCog(bot))
+    await bot.add_cog(GameManagementCog(bot))
+    await bot.add_cog(BlackjackManagementCog(bot))
     await bot.change_presence(status=discord.Status.online, activity=activity)
 
 
