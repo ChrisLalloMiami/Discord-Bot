@@ -37,7 +37,7 @@ class GameManagementCog(commands.Cog, name="Games"):
                     data_updated = False
                     print("File loaded")
 
-                    description = f"SkyBucks: ${player_data["money"]}\n"
+                    description = f"SkyBucks: ${player_data['money']}\n"
                     active_games = ""
                     print("Starting reader loop")
 
@@ -53,7 +53,7 @@ class GameManagementCog(commands.Cog, name="Games"):
                     # List all games and their statuses
                     for game in player_data["active_games"]:
                         if game:
-                            active_games += (f"* {game}: {player_data["active_games"].get(game, None)}\n")
+                            active_games += (f"* {game}: {player_data['active_games'].get(game, None)}\n")
 
                     # Add new games to player's database if not already there
                     print("Starting adder loop")
