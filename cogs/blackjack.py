@@ -4,9 +4,11 @@
 # Import dependencies
 import discord
 from discord.ext import commands
+import yaml
 
 # Import command and helper modules
 from helpers.funcs import *
+from helpers.database_funcs import *
 from helpers.constants import *
 
 class BlackjackManagementCog(commands.Cog, name="Blackjack"):
@@ -21,10 +23,28 @@ class BlackjackManagementCog(commands.Cog, name="Blackjack"):
         if ctx.channel.name.lower() != COMMAND_CHANNEL:
             return
         
-        embed = discord.Embed(
-            title="Error",
-            description="Please specify at least one role.",
-            color=discord.Color.red()
-        )
-        await ctx.send(embed=embed)
-        return
+        # Look for player database. If not there, set one up
+        player_database_path = get_user_data_filepath(str(ctx.author.id))
+        if not os.path.exists(player_database_path):
+            create_new_database(player_database_path)
+            embed = discord.Embed(
+                title="Profile setup complete",
+                description=f"Your profile is now setup. Your starting balance is {STARTING_CURRENCY} SkyBucks",
+                color=discord.Color.green()
+            )
+            await ctx.send(embed=embed)
+        
+        # If database exists, see if game data is setup
+        with open(player_database_path, "r+") as file:
+            player_data = yaml.safe_load(file)
+            if player_data["active_games"].get("Blackjack", None) is None:
+                update_database(player_database_path)
+                embed = discord.Embed(
+                    title="Player database updated",
+                    description="Your database was out of date but has been updated",
+                    color=discord.Color.green()
+                )
+                await ctx.send(embed=embed)
+
+            # Database exists and is up-to-date
+            
