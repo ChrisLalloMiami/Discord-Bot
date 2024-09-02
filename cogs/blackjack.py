@@ -9,6 +9,8 @@ import yaml
 from PIL import Image
 import requests
 from io import BytesIO
+import random
+import re
 
 # Import command and helper modules
 from helpers.funcs import *
@@ -19,6 +21,8 @@ from helpers.constants import *
 
 time_since_last_play = None
 cards = {
+    "Hidden" : "https://tekeye.uk/playing_cards/images/svg_playing_cards/backs/png_96_dpi/blue.png",
+
     "Clubs" : {
         "Ace"   : "https://tekeye.uk/playing_cards/images/svg_playing_cards/fronts/png_96_dpi/clubs_ace.png",
         "Two"   : "https://tekeye.uk/playing_cards/images/svg_playing_cards/fronts/png_96_dpi/clubs_2.png",
@@ -84,8 +88,7 @@ cards = {
     }
 }
 
-player_cards = {}
-dealer_cards = {}
+active_games = {}
 
 class BlackjackManagementCog(commands.Cog, name="Blackjack"):
     def __init__(self, bot):
@@ -141,6 +144,15 @@ class BlackjackManagementCog(commands.Cog, name="Blackjack"):
             action = str.lower(args[0])
             bet = 0
             if action == "start":
+                # Check if player has an ongoing game
+                if str(ctx.author.id) in active_games:
+                    embed = discord.Embed(
+                        title="Error",
+                        description="You already have an active game of Blackjack",
+                        color=discord.Color.red()
+                    )
+                    await ctx.send(embed=embed)
+                    return
                 # Check bet amount
                 try:
                     bet = int(args[1])
@@ -157,32 +169,193 @@ class BlackjackManagementCog(commands.Cog, name="Blackjack"):
 
                 embed = discord.Embed(
                     title="Starting",
-                    description=f"Your game of blackjack is now starting with a bet of {int(args[1])}",
+                    description=f"Your game of blackjack is now starting with a bet of ${int(args[1])}",
                     color=discord.Color.blue()
                 )
                 await ctx.send(embed=embed)
-                images = ["https://tekeye.uk/playing_cards/images/svg_playing_cards/fronts/png_96_dpi/clubs_ace.png",
-                          "https://tekeye.uk/playing_cards/images/svg_playing_cards/fronts/png_96_dpi/clubs_2.png",
-                          "https://tekeye.uk/playing_cards/images/svg_playing_cards/fronts/png_96_dpi/spades_queen.png",
-                          "https://tekeye.uk/playing_cards/images/svg_playing_cards/fronts/png_96_dpi/spades_9.png"]
-                embeds = []
-                adjusted_images = [Image.open(BytesIO(requests.get(url).content)) for url in images]
-                width, height = adjusted_images[0].size
-                total_width = width * len(adjusted_images)
-                combined_image = Image.new("RGB", (total_width, height))
 
-                x_offset = 0
-                for img in adjusted_images:
-                    combined_image.paste(img, (x_offset, 0))
-                    x_offset += width
-                
-                combined_image.save("combined.png")
+                # Core game logic
 
-                file = discord.File("combined.png", filename="combined.png")
-                embed = discord.Embed(
-                    title="Your hand",
-                    color=discord.Color.blue()
-                )
-                embed.set_image(url="attachment://combined.png")
-                await ctx.send(file=file, embed=embed)
-                
+                # Deal player's and dealer's cards
+                try:
+                    pval1, pval1_off = get_card_value(get_card_rank(pick_card(str(ctx.author.id), "player")))
+                    dval1, dval1_off = get_card_value(get_card_rank(pick_card(str(ctx.author.id), "dealer")))
+                    pval2, pval2_off = get_card_value(get_card_rank(pick_card(str(ctx.author.id), "player")))
+                    dval2, dval2_off = get_card_value(get_card_rank(pick_card(str(ctx.author.id), "dealer")))
+
+                    title = ""
+                    if pval1_off == 0 and pval2_off == 0:
+                        # Neither cards are aces
+                        player_sum = pval1 + pval2
+                        title = f"Your hand (Sum: {player_sum})"
+                    elif pval1_off != 0 and pval2_off != 0:
+                        # Both cards are aces
+                        player_sum = 2
+                        title = "Your hand (Sum: 2)"
+                    elif pval1_off != 0 and pval2_off == 0:
+                        # Left card is an ace, right is not
+                        player_sum1 = pval1 + pval2
+                        player_sum2 = pval1_off + pval2
+                        title = f"Your hand (Sum: {player_sum1} or {player_sum2})"
+                    elif pval1_off == 0 and pval2_off != 0:
+                        # Right card is an ace, left is not
+                        player_sum1 = pval1 + pval2
+                        player_sum2 = pval1 + pval2_off
+                        title = f"Your hand (Sum: {player_sum1} or {player_sum2})"
+
+                    player_cards_path = splice_card_images(active_games[str(ctx.author.id)]["player_cards"], str(ctx.author.id))
+                    file = discord.File(player_cards_path, filename="combined.png")
+                    embed = discord.Embed(
+                        title=title,
+                        color=discord.Color.blue()
+                    )
+                    embed.set_image(url=f"attachment://combined.png")
+                    await ctx.send(file=file, embed=embed)
+
+                    dealer_cards_path = splice_card_images([cards["Hidden"], active_games[str(ctx.author.id)]["dealer_cards"][0]], str(ctx.author.id))
+                    file = discord.File(dealer_cards_path, filename="combined.png")
+                    embed = discord.Embed(
+                        title="Dealer's hand",
+                        color=discord.Color.blue()
+                    )
+                    embed.set_image(url=f"attachment://combined.png")
+                    await ctx.send(file=file, embed=embed)
+                except Exception as e:
+                    print(e)
+                    print(e.with_traceback)
+
+def get_card_value(card_rank: str) -> tuple:
+    '''
+    Determines a card's value given its rank. Returns its value in the first
+    entry of a tuple (because the input of an ace results in the return 1, 11)
+
+    ### Parameters
+
+    * **card_rank**: The rank of the card of which to find the value
+
+    ### Returns
+
+    * **card_value**: The value of the card
+    '''
+    match str.lower(card_rank):
+        case "1":
+            return 1, 0
+        case "2":
+            return 2, 0
+        case "3":
+            return 3, 0
+        case "4":
+            return 4, 0
+        case "5":
+            return 5, 0
+        case "6":
+            return 6, 0
+        case "7":
+            return 7, 0
+        case "8":
+            return 8, 0
+        case "9":
+            return 9, 0
+        case "10":
+            return 10, 0
+        case "jack":
+            return 10, 0
+        case "queen":
+            return 10, 0
+        case "king":
+            return 10, 0
+        case "ace":
+            return 1, 11
+
+def get_card_rank(image_url: str):
+    '''
+    Gets the card value, given its image_url
+
+    ### Parameters
+
+    * **image_url**: The URL of the card's image
+
+    ### Returns
+
+    * **value**: The card's value
+    '''
+    pattern = r'/[a-z]+_([a-z0-9]+)(?:_simple)?\.png'
+    matched = re.search(pattern, image_url)
+    
+    if matched:
+        return matched.group(1).strip()
+    else:
+        print("ERROR: Failed to match card rank pattern")
+
+def pick_card(user_id: str, destination: str):
+    '''
+    Picks a random card from the `cards` dictionary and returns
+    its image URL
+
+    ### Parameters
+
+    * **user_id**: The user's user_id in a string
+    * **destination**: The list in which to insert the picked card, either
+    player or dealer
+
+    ### Returns
+
+    * **image_url**: The URL of the card's image
+    '''
+    # Setup player's game storage if necessary
+    if not user_id in active_games:
+        active_games[user_id] = {
+            "player_cards" : [],
+            "dealer_cards" : [],
+            "player_sum"   : 0,
+            "dealer_sum"   : 0
+        }
+    
+    # Pick random cards
+    while True:
+        suit = random.choice(list(cards.keys()))
+        if suit == "Hidden":
+            continue
+        rank = random.choice(list(cards[suit].keys()))
+        image_url = cards[suit][rank]
+
+        # Check if card is already in play. If so, pick another
+        if image_url in active_games[user_id]["player_cards"] \
+            or image_url in active_games[user_id]["dealer_cards"]:
+            continue
+        else:
+            if destination == "player":
+                active_games[user_id]["player_cards"].append(image_url)
+            else:
+                active_games[user_id]["dealer_cards"].append(image_url)
+            return image_url
+
+def splice_card_images(cards: list, user_id: str):
+    '''
+    Given a list of card image URLs, splices the images into one and
+    saves the resulting image to the user's data directory. Returns the
+    path to the new image
+
+    ### Parameters
+
+    * **cards**: A list of card image URLs
+    * **user_id**: The user's user_id in a string
+
+    ### Returns
+
+    * **cards_path**: The path to the generated image
+    '''
+    adjusted_images = [Image.open(BytesIO(requests.get(url).content)) for url in cards]
+
+    width, height = adjusted_images[0].size
+    total_width = width * len(adjusted_images)
+    combined_image = Image.new("RGB", (total_width, height))
+    x_offset = 0
+
+    for img in adjusted_images:
+        combined_image.paste(img, (x_offset, 0))
+        x_offset += width
+    
+    cards_path = os.path.join(get_user_data_directory(user_id), "combined.png")
+    combined_image.save(cards_path)
+    return cards_path

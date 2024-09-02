@@ -11,14 +11,32 @@ from helpers.constants import *
 
 def get_user_data_filepath(user_id: str):
     '''
-    Returns a potential path to a directory belonging to a player
-    with the given user_id
+    Returns a potential path to a database belonging to a player
+    with the given user_id. If the player database directory does
+    not exist, one is created
 
     ### Parameters
 
     * **user_id**: the user_id of the player, for whom the database is being searched
     '''
-    return os.path.join(PLAYER_GAME_DATA_DIR, f"user_{user_id}.yml")
+    player_dir = os.path.join(PLAYER_GAME_DATA_DIR, f"user_{user_id}")
+    if not os.path.exists(player_dir):
+        os.mkdir(player_dir)
+    return os.path.join(player_dir, f"user_{user_id}.yml")
+
+def get_user_data_directory(user_id: str):
+    '''
+    Returns the path to the given player's data directory, creating
+    it if needed
+
+    ### Parameters
+
+    * **user_id**: the user_id of the player, for whom the database is being searched
+    '''
+    player_dir = os.path.join(PLAYER_GAME_DATA_DIR, f"user_{user_id}")
+    if not os.path.exists(player_dir):
+        os.mkdir(player_dir)
+    return player_dir
 
 def create_new_database(player_database_path: str):
     '''
