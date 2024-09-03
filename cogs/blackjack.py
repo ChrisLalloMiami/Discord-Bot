@@ -178,31 +178,23 @@ class BlackjackManagementCog(commands.Cog, name="Blackjack"):
 
                 # Deal player's and dealer's cards
                 try:
-                    pval1, pval1_off = get_card_value(get_card_rank(pick_card(str(ctx.author.id), "player")))
-                    dval1, dval1_off = get_card_value(get_card_rank(pick_card(str(ctx.author.id), "dealer")))
-                    pval2, pval2_off = get_card_value(get_card_rank(pick_card(str(ctx.author.id), "player")))
-                    dval2, dval2_off = get_card_value(get_card_rank(pick_card(str(ctx.author.id), "dealer")))
+                    pick_card(str(ctx.author.id), "player")
+                    pick_card(str(ctx.author.id), "dealer")
+                    pick_card(str(ctx.author.id), "player")
+                    pick_card(str(ctx.author.id), "dealer")
 
+                    player_score_options, dealer_score_options = check_scores(str(ctx.author.id))
+                        
+                    # Nobody wins yet. Continue logic
                     title = ""
-                    if pval1_off == 0 and pval2_off == 0:
-                        # Neither cards are aces
-                        player_sum = pval1 + pval2
-                        title = f"Your hand (Sum: {player_sum})"
-                    elif pval1_off != 0 and pval2_off != 0:
-                        # Both cards are aces
-                        player_sum = 2
-                        title = "Your hand (Sum: 2)"
-                    elif pval1_off != 0 and pval2_off == 0:
-                        # Left card is an ace, right is not
-                        player_sum1 = pval1 + pval2
-                        player_sum2 = pval1_off + pval2
-                        title = f"Your hand (Sum: {player_sum1} or {player_sum2})"
-                    elif pval1_off == 0 and pval2_off != 0:
-                        # Right card is an ace, left is not
-                        player_sum1 = pval1 + pval2
-                        player_sum2 = pval1 + pval2_off
-                        title = f"Your hand (Sum: {player_sum1} or {player_sum2})"
+                    if player_score_options[0] == player_score_options[1]:
+                        title = f"Your hand (Sum: {player_score_options[0]})"
+                    elif player_score_options[0] == 21 or player_score_options[1] == 21:
+                        title = "Your hand (Sum: 21)"
+                    else:
+                        title = f"Your hand (Sum: {player_score_options[0]} or {player_score_options[1]})"
 
+                    # Construct cards images
                     player_cards_path = splice_card_images(active_games[str(ctx.author.id)]["player_cards"], str(ctx.author.id))
                     file = discord.File(player_cards_path, filename="combined.png")
                     embed = discord.Embed(
@@ -220,9 +212,84 @@ class BlackjackManagementCog(commands.Cog, name="Blackjack"):
                     )
                     embed.set_image(url=f"attachment://combined.png")
                     await ctx.send(file=file, embed=embed)
+
+                    # Check for win or push
+                    if player_score_options[0] == 21 or player_score_options[1] == 21:
+                        if dealer_score_options[0] == 21 or dealer_score_options[1] == 21:
+                            embed = discord.Embed(
+                                title="Push",
+                                description="You and the dealer were both dealt Blackjack",
+                                color=discord.Color.blue()
+                            )
+                            await ctx.send(embed=embed)
+                            # Delete player's game database
+                            del active_games[str(ctx.author.id)]
+                            return
+                        else:
+                            embed = discord.Embed(
+                                title="Player Wins",
+                                description="You were dealt Blackjack",
+                                color=discord.Color.blue()
+                            )
+                            await ctx.send(embed=embed)
+                            # Delete player's game database
+                            del active_games[str(ctx.author.id)]
+                            return
                 except Exception as e:
                     print(e)
                     print(e.with_traceback)
+
+def check_scores(user_id: str):
+    '''
+    Checks the scores of the player and dealer, given the player's user_id
+    in a string to locate their database entry. Returns 2-entry lists for
+    each, containing the 2 possible scores for each
+
+    ### Parameters
+
+    * **user_id**: The user's user_id in a string
+
+    ### Returns
+
+    * **player_score_options**: A 2-entry list with the player's possible scores
+    * **dealer_score_options**: A 2-entry list with the dealer's possible scores
+    '''
+    player_cards = active_games[user_id]["player_cards"]
+    dealer_cards = active_games[user_id]["dealer_cards"]
+    player_score_options = [0, 0]
+    dealer_score_options = [0, 0]
+
+    # Check player cards
+    for image_url in player_cards:
+        pval, pval_off = get_card_value(get_card_rank(image_url))
+        # Not an ace
+        if pval_off == 0:
+            # Add to both possibilities
+            player_score_options[0] += pval
+            player_score_options[1] += pval
+        # Is an ace
+        else:
+            # Add to both possibilities
+            player_score_options[0] += pval
+            player_score_options[1] += pval_off
+    
+     # Check dealer cards
+    for image_url in dealer_cards:
+        dval, dval_off = get_card_value(get_card_rank(image_url))
+        # Not an ace
+        if dval_off == 0:
+            # Add to both possibilities
+            dealer_score_options[0] += dval
+            dealer_score_options[1] += dval
+        # Is an ace
+        else:
+            # Add to both possibilities
+            dealer_score_options[0] += dval
+            dealer_score_options[1] += dval_off
+    
+    return player_score_options, dealer_score_options
+    
+
 
 def get_card_value(card_rank: str) -> tuple:
     '''
