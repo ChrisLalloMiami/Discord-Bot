@@ -4,7 +4,6 @@
 # Import dependencies
 import os.path
 import sys
-import re
 import discord
 from discord import Intents
 from discord.ext import commands

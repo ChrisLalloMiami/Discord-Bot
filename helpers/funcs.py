@@ -3,7 +3,6 @@
 
 # Import dependencies
 import discord
-import os
 
 # Import constants
 from helpers.constants import *

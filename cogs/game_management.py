@@ -4,7 +4,6 @@
 # Import dependencies
 import discord
 from discord.ext import commands
-import yaml
 
 # Import command and helper modules
 from helpers.funcs import *

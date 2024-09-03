@@ -185,7 +185,6 @@ class BlackjackManagementCog(commands.Cog, name="Blackjack"):
 
                     player_score_options, dealer_score_options = check_scores(str(ctx.author.id))
                         
-                    # Nobody wins yet. Continue logic
                     title = ""
                     if player_score_options[0] == player_score_options[1]:
                         title = f"Your hand (Sum: {player_score_options[0]})"
@@ -204,7 +203,7 @@ class BlackjackManagementCog(commands.Cog, name="Blackjack"):
                     embed.set_image(url=f"attachment://combined.png")
                     await ctx.send(file=file, embed=embed)
 
-                    dealer_cards_path = splice_card_images([cards["Hidden"], active_games[str(ctx.author.id)]["dealer_cards"][0]], str(ctx.author.id))
+                    dealer_cards_path = splice_card_images([cards["Hidden"]] + active_games[str(ctx.author.id)]["dealer_cards"][:-1], str(ctx.author.id))
                     file = discord.File(dealer_cards_path, filename="combined.png")
                     embed = discord.Embed(
                         title="Dealer's hand",
@@ -235,6 +234,217 @@ class BlackjackManagementCog(commands.Cog, name="Blackjack"):
                             # Delete player's game database
                             del active_games[str(ctx.author.id)]
                             return
+                except Exception as e:
+                    print(e)
+                    print(e.with_traceback)
+            
+            if action == "hit":
+                # Check if player has an ongoing game
+                if str(ctx.author.id) not in active_games:
+                    embed = discord.Embed(
+                        title="Error",
+                        description="You do not have an active game of Blackjack",
+                        color=discord.Color.red()
+                    )
+                    await ctx.send(embed=embed)
+                    return
+                try:
+                    pick_card(str(ctx.author.id), "player")
+                    player_score_options, dealer_score_options = check_scores(str(ctx.author.id))
+
+                    title = ""
+                    if player_score_options[0] == player_score_options[1]:
+                        title = f"Your hand (Sum: {player_score_options[0]})"
+                    elif player_score_options[0] == 21 or player_score_options[1] == 21:
+                        title = "Your hand (Sum: 21)"
+                    else:
+                        if player_score_options[1] > 21:
+                            title = f"Your hand (Sum: {player_score_options[0]})"
+                        elif player_score_options[0] > 21:
+                            title = f"Your hand (Sum: {player_score_options[1]})"
+                        else:
+                            title = f"Your hand (Sum: {player_score_options[0]} or {player_score_options[1]})"
+
+                    # Construct cards images
+                    player_cards_path = splice_card_images(active_games[str(ctx.author.id)]["player_cards"], str(ctx.author.id))
+                    file = discord.File(player_cards_path, filename="combined.png")
+                    embed = discord.Embed(
+                        title=title,
+                        color=discord.Color.blue()
+                    )
+                    embed.set_image(url=f"attachment://combined.png")
+                    await ctx.send(file=file, embed=embed)
+
+                    dealer_cards_path = splice_card_images([cards["Hidden"]] + active_games[str(ctx.author.id)]["dealer_cards"][:-1], str(ctx.author.id))
+                    file = discord.File(dealer_cards_path, filename="combined.png")
+                    embed = discord.Embed(
+                        title="Dealer's hand",
+                        color=discord.Color.blue()
+                    )
+                    embed.set_image(url=f"attachment://combined.png")
+                    await ctx.send(file=file, embed=embed)
+
+                    # Check for win or push
+                    if player_score_options[0] == 21 or player_score_options[1] == 21:
+                        if dealer_score_options[0] == 21 or dealer_score_options[1] == 21:
+                            embed = discord.Embed(
+                                title="Push",
+                                description="You and the dealer were both dealt Blackjack",
+                                color=discord.Color.blue()
+                            )
+                            await ctx.send(embed=embed)
+                            # Delete player's game database
+                            del active_games[str(ctx.author.id)]
+                            return
+                        else:
+                            embed = discord.Embed(
+                                title="Player Wins",
+                                description="You were dealt Blackjack",
+                                color=discord.Color.blue()
+                            )
+                            await ctx.send(embed=embed)
+                            # Delete player's game database
+                            del active_games[str(ctx.author.id)]
+                            return
+                    elif player_score_options[0] > 21 and player_score_options[1] > 21:
+                        embed = discord.Embed(
+                            title="Player Loses",
+                            description="You busted",
+                            color=discord.Color.blue()
+                        )
+                        await ctx.send(embed=embed)
+                        # Delete player's game database
+                        del active_games[str(ctx.author.id)]
+                        return
+                except Exception as e:
+                    print(e)
+                    print(e.with_traceback)
+            
+            if action == "stand":
+                # Check if player has an ongoing game
+                if str(ctx.author.id) not in active_games:
+                    embed = discord.Embed(
+                        title="Error",
+                        description="You do not have an active game of Blackjack",
+                        color=discord.Color.red()
+                    )
+                    await ctx.send(embed=embed)
+                    return
+                try:
+                    # Setup initial titles
+                    player_score_options, dealer_score_options = check_scores(str(ctx.author.id))
+                    player_title = ""
+                    player_score = 0
+                    if player_score_options[1] < 21:
+                        player_title = f"Your hand (Sum: {player_score_options[1]})"
+                        player_score = player_score_options[1]
+                    else:
+                        player_title = f"Your hand (Sum: {player_score_options[0]})"
+                        player_score = player_score_options[0]
+
+                    while True:
+                        player_score_options, dealer_score_options = check_scores(str(ctx.author.id))
+                        dealer_title = ""
+                        if dealer_score_options[0] == dealer_score_options[1]:
+                            dealer_title = f"Dealer's hand (Sum: {dealer_score_options[0]})"
+                        elif dealer_score_options[0] == 21 or dealer_score_options[1] == 21:
+                            dealer_title = "Dealer's hand (Sum: 21)"
+                        else:
+                            if dealer_score_options[1] > 21:
+                                dealer_title = f"Dealer's hand (Sum: {dealer_score_options[0]})"
+                            elif dealer_score_options[0] > 21:
+                                dealer_title = f"Dealer's hand (Sum: {dealer_score_options[1]})"
+                            else:
+                                dealer_title = f"Dealer's hand (Sum: {dealer_score_options[0]} or {dealer_score_options[1]})"
+
+                        # Show current cards, including revealing dealer's hidden card
+                        player_cards_path = splice_card_images(active_games[str(ctx.author.id)]["player_cards"], str(ctx.author.id))
+                        file = discord.File(player_cards_path, filename="combined.png")
+                        embed = discord.Embed(
+                            title=player_title,
+                            color=discord.Color.blue()
+                        )
+                        embed.set_image(url=f"attachment://combined.png")
+                        await ctx.send(file=file, embed=embed)
+
+                        dealer_cards_path = splice_card_images(active_games[str(ctx.author.id)]["dealer_cards"], str(ctx.author.id))
+                        file = discord.File(dealer_cards_path, filename="combined.png")
+                        embed = discord.Embed(
+                            title=dealer_title,
+                            color=discord.Color.blue()
+                        )
+                        embed.set_image(url=f"attachment://combined.png")
+                        await ctx.send(file=file, embed=embed)
+                        
+                        # Handle dealer bust
+                        if dealer_score_options[0] > 21 and dealer_score_options[1] > 21:
+                            embed = discord.Embed(
+                                title="Player Wins",
+                                description="Dealer busted",
+                                color=discord.Color.blue()
+                            )
+                            await ctx.send(embed=embed)
+                            # Delete player's game database
+                            del active_games[str(ctx.author.id)]
+                            return
+                        
+                        # Handle dealer blackjack
+                        if dealer_score_options[0] == 21 or dealer_score_options[1] == 21:
+                            embed = discord.Embed(
+                                title="Player loses",
+                                description="Dealer got Blackjack",
+                                color=discord.Color.blue()
+                            )
+                            await ctx.send(embed=embed)
+                            # Delete player's game database
+                            del active_games[str(ctx.author.id)]
+                            return
+
+                        # Check if dealer must stand
+                        dealer_score = 0
+                        if (dealer_score_options[0] >= 17 and dealer_score_options[0] < 21) \
+                            or (dealer_score_options[1] >= 17 and dealer_score_options[1] < 21):
+                            # Get best option
+                            if dealer_score_options[1] < 21:
+                                dealer_score = dealer_score_options[1]
+                            else:
+                                dealer_score = dealer_score_options[0]
+                            
+                            # Compare with player
+                            if dealer_score == player_score:
+                                embed = discord.Embed(
+                                    title="Push",
+                                    description="You and the dealer ended with the same score",
+                                    color=discord.Color.blue()
+                                )
+                                await ctx.send(embed=embed)
+                                # Delete player's game database
+                                del active_games[str(ctx.author.id)]
+                                return
+                            elif dealer_score > player_score:
+                                embed = discord.Embed(
+                                    title="Player loses",
+                                    description="The dealer had a higher score than you",
+                                    color=discord.Color.blue()
+                                )
+                                await ctx.send(embed=embed)
+                                # Delete player's game database
+                                del active_games[str(ctx.author.id)]
+                                return
+                            else:
+                                embed = discord.Embed(
+                                    title="Player wins",
+                                    description="You had a higher score than the dealer",
+                                    color=discord.Color.blue()
+                                )
+                                await ctx.send(embed=embed)
+                                # Delete player's game database
+                                del active_games[str(ctx.author.id)]
+                                return
+                        # Dealer doesn't need to stand. Deal another card
+                        else:
+                            pick_card(str(ctx.author.id), "dealer")
+                            continue
                 except Exception as e:
                     print(e)
                     print(e.with_traceback)

@@ -2,7 +2,6 @@
 # Description: Helper functions for database
 
 # Import dependencies
-import discord
 import os
 import yaml
 
