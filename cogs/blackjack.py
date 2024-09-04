@@ -238,7 +238,7 @@ class BlackjackManagementCog(commands.Cog, name="Blackjack"):
                     print(e)
                     print(e.with_traceback)
             
-            if action == "hit":
+            elif action == "hit":
                 # Check if player has an ongoing game
                 if str(ctx.author.id) not in active_games:
                     embed = discord.Embed(
@@ -320,7 +320,7 @@ class BlackjackManagementCog(commands.Cog, name="Blackjack"):
                     print(e)
                     print(e.with_traceback)
             
-            if action == "stand":
+            elif action == "stand":
                 # Check if player has an ongoing game
                 if str(ctx.author.id) not in active_games:
                     embed = discord.Embed(
@@ -448,6 +448,15 @@ class BlackjackManagementCog(commands.Cog, name="Blackjack"):
                 except Exception as e:
                     print(e)
                     print(e.with_traceback)
+            
+            else:
+                embed = discord.Embed(
+                    title="Error",
+                    description="Valid Blackjack subcommands are `hit` and `stand`",
+                    color=discord.Color.red()
+                )
+                await ctx.send(embed=embed)
+                return
 
 def check_scores(user_id: str):
     '''
