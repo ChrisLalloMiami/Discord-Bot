@@ -58,7 +58,8 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
         help_command = bot.get_command("help")
         if help_command:
-            await help_command(ctx)
+            # await help_command(ctx)
+            await ctx.invoke(help_command)
         else:
             print("Error occurred getting help command")
 
